@@ -23,7 +23,7 @@ router.post('/register', async (req, res, next) => {
 
         const user = await User.create(req.body);
 
-        const token = generateToken(user.id);
+        const token = generateToken({ id: user.id });
         user.password = undefined;
         return res.status(200).send({ user, token });
 
@@ -46,7 +46,7 @@ router.post('/authenticate', async (req, res, next) => {
     }
     user.password = undefined;
 
-    const token = generateToken(user.id);
+    const token = generateToken({ id: user.id });
 
     res.status(200).send({ user, token });
 
