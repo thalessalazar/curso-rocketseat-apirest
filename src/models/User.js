@@ -1,4 +1,5 @@
 const mongoose = require('../database/database');
+const bcrypt = require('bcryptjs');
 
 const UserSchema = new mongoose.Schema({
      name: {
@@ -18,8 +19,16 @@ const UserSchema = new mongoose.Schema({
      },
      createdAt: {
          type: Date,
-         dafault: Date.now
+         dafault: Date.now()
      }
+});
+
+//.PRE executa função que executa antes de algum metodo acontecer, 
+//neste caso o de salvar. ele faz a encripitação da hash
+UserSchema.pre('save', async function(next) {
+    const hash = await bcrypt.hash(this.password, 10);
+    this.password = hash;
+    next();
 });
 
 const User = mongoose.model('User', UserSchema);
