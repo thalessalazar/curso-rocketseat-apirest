@@ -6,8 +6,7 @@ const port = process.env.PORT || 3333
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
-require('./controllers/authController')(app);
-require('./controllers/projectController')(app);
+require('./app/controllers/index')(app);
 
 app.listen(port, (err) => {
     if (err) console.log('Não foi possível iniciar servidor');
