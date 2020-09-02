@@ -6,11 +6,14 @@ const authConfig = require('../../config/auth.json');
 const router = express.Router();
 const User = require('../models/User');
 
+
 function generateToken(params = {}) {
     return jwt.sign({ params }, authConfig.secret, {
         expiresIn: 86400
     });
 }
+
+
 
 router.post('/register', async (req, res, next) => {
     const { email } = req.body;
@@ -32,6 +35,8 @@ router.post('/register', async (req, res, next) => {
     }
 });
 
+
+
 router.post('/authenticate', async (req, res, next) => {
     const { email, password } = req.body;
 
@@ -49,6 +54,11 @@ router.post('/authenticate', async (req, res, next) => {
     const token = generateToken({ id: user.id });
 
     res.status(200).send({ user, token });
+});
+
+
+
+router.post('/forgot_password', async (req, rex, next) => {
 
 });
 
