@@ -25,7 +25,7 @@ router.post('/register', async (req, res, next) => {
         if (await User.findOne({ email })) {
             return res.status(400).send({ error: 'User already exists' });
         }
-
+        
         const user = await User.create(req.body);
 
         const token = generateToken({ id: user.id });
@@ -101,7 +101,6 @@ router.post('/forgot_password', async (req, res, next) => {
     }
 });
 
-//tem que arrumar isso
 router.post('/reset_password', async (req, res, next) => {
     const { email, token, password } = req.body;
 
