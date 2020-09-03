@@ -14,6 +14,10 @@ function generateToken(params = {}) {
     });
 }
 
+function generateResetPasswordToken() {
+    return crypto.randomBytes(20).toString('hex');
+}
+
 router.post('/register', async (req, res, next) => {
     const { email } = req.body;
 
@@ -62,7 +66,7 @@ router.post('/forgot_password', async (req, res, next) => {
             return res.status(400).send({ error: 'User not found' });
         }
 
-        const token = crypto.randomBytes(20).toString('hex');
+        const token = generateResetPasswordToken();
 
         const now = new Date();
         now.setHours(now.getHours() + 1);
@@ -102,16 +106,16 @@ router.post('/reset_password', async (req, res, next) => {
     const { email, token, password } = req.body;
 
     try {
-        const user = User.findOne({ email })
-            .select('+passwordResetToken +passwordResetExpires');
+        console.log('Entrou no try');
+        const user = await User.findOne({ email }).select('+passwordResetToken  +passwordResetExpires');
+
         if (!user) {
             return res.status(400).send({ error: 'User not found' });
         }
-        console.log(passwordResetToken, passwordResetExpires);
+        console.log(user.passwordResetToken, user.passwordResetExpires);
+
         //ta dando problema na hora de salvar o token no banco
         //fica como undefined
-        console.log('Body Token:', token);
-        console.log('User Token:', user.passwordResetToken);
 
         if (token !== user.passwordResetToken) {
             return res.status(400).send({ error: 'Invalid Token' });
@@ -124,14 +128,29 @@ router.post('/reset_password', async (req, res, next) => {
             return res.status(400).send({ error: 'Token Expired' });
         }
 
+        let newToken = generateResetPasswordToken();
         user.password = password;
+        user.passwordResetToken = newToken;
+
         await user.save();
 
         return res.status(200).send({ user });
 
     } catch (err) {
-        console.log('1');
+        console.log(err);
         return res.status(400).send({ error: 'Cannot reset password, try again' });
+    }
+});
+
+router.post('/details', async (req, res, next) => {
+    const id = req.body.id
+
+    try {
+        const user = await User.findById(id).select('+passwordResetToken');
+        console.log(user);
+        return res.status(200).send({ user });
+    } catch (err) {
+        return res.send(400).send({ err })
     }
 });
 
