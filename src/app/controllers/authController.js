@@ -2,10 +2,11 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const authConfig = require('../../config/auth.json');
+const crypto = require('crypto');
+const mailer = require('../../modules/mailer');
 
 const router = express.Router();
 const User = require('../models/User');
-
 
 function generateToken(params = {}) {
     return jwt.sign({ params }, authConfig.secret, {
@@ -13,13 +14,10 @@ function generateToken(params = {}) {
     });
 }
 
-
-
 router.post('/register', async (req, res, next) => {
     const { email } = req.body;
 
     try {
-
         if (await User.findOne({ email })) {
             return res.status(400).send({ error: 'User already exists' });
         }
@@ -34,8 +32,6 @@ router.post('/register', async (req, res, next) => {
         return res.status(400).send({ error: 'Registration failed' });
     }
 });
-
-
 
 router.post('/authenticate', async (req, res, next) => {
     const { email, password } = req.body;
@@ -56,10 +52,87 @@ router.post('/authenticate', async (req, res, next) => {
     res.status(200).send({ user, token });
 });
 
+router.post('/forgot_password', async (req, res, next) => {
+    const { email } = req.body;
 
+    try {
+        const user = await User.findOne({ email });
 
-router.post('/forgot_password', async (req, rex, next) => {
+        if (!user) {
+            return res.status(400).send({ error: 'User not found' });
+        }
 
+        const token = crypto.randomBytes(20).toString('hex');
+
+        const now = new Date();
+        now.setHours(now.getHours() + 1);
+
+        const updates = {
+            passwordResetToken: token,
+            passwordResetExpires: now
+        }
+
+        const result = await User.findOneAndUpdate({ email: email }, updates);
+
+        mailer.sendMail({
+            to: email,
+            from: 'thalessalazar.12@gmail.com',
+            template: 'auth/forgot_password',
+            context: {
+                token
+            }
+        }, (err) => {
+            if (err) {
+                console.log(err);
+                return res.status(400).send({ error: 'Cannot send forgot password e-mail' });
+            }
+
+            return res.status(200).send({ email: "E-mail enviado" });
+
+        });
+
+    } catch (err) {
+        console.log(err);
+        return res.status(400).send({ error: 'Erro on forgot password, try again' });
+    }
+});
+
+//tem que arrumar isso
+router.post('/reset_password', async (req, res, next) => {
+    const { email, token, password } = req.body;
+
+    try {
+        const user = User.findOne({ email })
+            .select('+passwordResetToken +passwordResetExpires');
+        if (!user) {
+            return res.status(400).send({ error: 'User not found' });
+        }
+        console.log(passwordResetToken, passwordResetExpires);
+        //ta dando problema na hora de salvar o token no banco
+        //fica como undefined
+        console.log('Body Token:', token);
+        console.log('User Token:', user.passwordResetToken);
+
+        if (token !== user.passwordResetToken) {
+            return res.status(400).send({ error: 'Invalid Token' });
+        }
+
+        const now = new Date;
+
+        if (now > user.passwordResetExpires) {
+
+            return res.status(400).send({ error: 'Token Expired' });
+        }
+
+        user.password = password;
+        await user.save();
+
+        return res.status(200).send({ user });
+
+    } catch (err) {
+        console.log('1');
+        return res.status(400).send({ error: 'Cannot reset password, try again' });
+    }
 });
 
 module.exports = app => app.use('/auth', router);
