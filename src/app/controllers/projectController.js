@@ -60,9 +60,33 @@ router.post('/', async (req, res, next) => {
 
 });
 
-//update project
-router.put('/update/:id', (req, res, next) => {
+router.put('/update/:id', async(req, res, next) => {
+    try {
+        const id = req.params.id;
+        const {title, description, tasks} = req.body;
+        console.log('id');
+        const project = await Project.findByIdAndUpdate(id,{
+            title,
+            description
+        }, {new: true});
 
+        project.tasks = [];
+        await Task.remove({project: project._id});
+
+        await Promise.all(tasks.map(async task => {
+            const projectTask = new Task({ ...task, project: project._id});
+            await projectTask.save();
+            project.tasks.push(projectTask);
+        }));
+
+        await project.save();
+
+        return res.status(200).send({project})
+
+    } catch (err) {
+        console.log(err);
+        return res.status(400).send({ err: err });
+    }
 });
 
 //delete project
