@@ -4,6 +4,7 @@ const router = express.Router();
 
 const Project = require('../models/Projects');
 const Task = require('../models/Tasks');
+const User = require('../models/User');
 
 router.use(authMiddleware);
 
@@ -18,26 +19,45 @@ router.use(authMiddleware);
 //List projects
 router.get('/', async (req, res, next) => {
     try {
-        const projectsList = await Project.find();
-        if (!projectsList) {
-            return res.status(400).send({
-                err: 'Not avaible, try again!'
-            })
-        }
-        return res.status(200).send({ projectsList })
-
+        const projects = await Project.find().populate(['user', 'tasks']);
+        return res.status(200).send({ projects });
     } catch (err) {
-        return res.status(400).send({ err: err })
+        return res.status(400).send({ err: "Error loading projects" })
     }
 });
 
 //list Projects Details
-router.get('/show/:id', async (req, res, next) => {
+router.get('/:id', async (req, res, next) => {
+    const id = req.params.id;
+    try {
+        const project = await Project.findById(id).populate(['user', 'tasks']);
+        return res.status(200).send({ project });
+    } catch (err) {
+        return res.status(400).send({ err: "Error loading projects" })
+    }
 });
 
 //create project
-router.post('/save', async (req, res, next) => {
-    
+router.post('/', async (req, res, next) => {
+    //Com inclu~sao 1 para n
+    try {
+        const { title, description, tasks } = req.body;
+
+        const project = await Project.create({ title, description, user: req.userid });
+
+        await Promise.all(tasks.map(async task => {
+            const projectTask = new Task({ ...task, project: project._id });
+            await projectTask.save();
+            project.tasks.push(projectTask);
+        }));
+
+        await project.save();
+
+        return res.status(200).send({ project });
+    } catch (err) {
+        return res.status(400).send({ err });
+    }
+
 });
 
 //update project
@@ -46,8 +66,14 @@ router.put('/update/:id', (req, res, next) => {
 });
 
 //delete project
-router.delete('/delete/:id', (req, res, next) => {
-
+router.delete('/:id', async (req, res, next) => {
+    const id = req.params.id;
+    try {
+        await Project.findByIdAndRemove(id);
+        return res.status(200).send({ msg: "Project delected" });
+    } catch (err) {
+        return res.status(400).send({ err: "Error on delete project" })
+    }
 });
 
 module.exports = app => app.use('/projects', router);
